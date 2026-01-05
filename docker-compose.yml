@@ -1,0 +1,11 @@
+services:
+  scraper:
+    build: .
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    deploy:
+      replicas: 3
