@@ -1,6 +1,7 @@
-# //INFO: Specialized compose for Coolify production
+# //INFO: Specialized Coolify compose with multi-node workaround
+# //NOTE: Coolify does not support 'replicas', so we define 3 separate services
 services:
-  naira-scraper:
+  naira-scraper-1: &scraper_node
     build: .
     volumes:
       - nairaland_data:/app/data
@@ -8,6 +9,13 @@ services:
       - PYTHONUNBUFFERED=1
     networks:
       - coolify
+    restart: always
+
+  naira-scraper-2:
+    <<: *scraper_node
+
+  naira-scraper-3:
+    <<: *scraper_node
 
 volumes:
   nairaland_data:
