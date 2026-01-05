@@ -5,7 +5,7 @@ from collections import deque
 from typing import List, Dict
 
 from browser import BrowserManager, safe_goto
-from parser import extract_topic_links, extract_pagination_links, parse_topic_content, get_url_type
+from parser import extract_topic_links, extract_pagination_links, parse_topic_content, get_url_type, get_topic_id
 import config
 from database import DatabaseManager
 
@@ -14,11 +14,7 @@ class NairalandCrawler:
         self.topic_queue = deque()
         self.processed_count = 0
         self.cf_failures = 0
-        
-        #INFO: Initialize shared database manager
         self.db = DatabaseManager(config.DATABASE_URL)
-        
-        #INFO: Random startup offset to prevent race conditions in distributed mode
         time.sleep(random.uniform(0, 5))
 
     def is_cloudflare_page(self, html_content: str) -> bool:
@@ -36,7 +32,6 @@ class NairalandCrawler:
             self.cf_failures = 0
 
     def process_url(self, page, url: str, url_type: str):
-        #INFO: Core processing logic for any Nairaland URL
         if self.db.is_url_visited(url):
             return True
 
@@ -50,26 +45,29 @@ class NairalandCrawler:
                 self.db.mark_url_failed(url)
                 return False
 
-            # 1. Topic Discovery (on all pages)
+            # Discovery
             discovered_topics = extract_topic_links(content)
             if discovered_topics:
                 self.db.add_urls(discovered_topics, url_type='topic')
 
-            # 2. Pagination Discovery
             discovered_pgn = extract_pagination_links(content)
             if discovered_pgn:
-                # Pagination links inherit the type of the parent page
                 self.db.add_urls(discovered_pgn, url_type=url_type)
 
-            # 3. Post Extraction (only for topics)
+            # Post Extraction
             if url_type == 'topic':
                 posts = parse_topic_content(content)
+                topic_id = get_topic_id(url)
+                
                 if posts:
-                    for post in posts: post['source_url'] = url
+                    for post in posts: 
+                        post['source_url'] = url
+                        post['topic_id'] = topic_id
+                    
                     self.db.save_posts(posts)
-                    print(f"    #INFO: Saved {len(posts)} posts from {url}")
+                    print(f"    #INFO: Saved {len(posts)} posts from topic {topic_id}")
                 else:
-                    print(f"    #NOTE: No posts on topic page: {url}")
+                    print(f"    #NOTE: No posts or broken parsing on: {url}")
             else:
                 print(f"    #INFO: Processed listing page: {url}")
 
@@ -89,18 +87,13 @@ class NairalandCrawler:
 
         with BrowserManager(headless=config.HEADLESS) as page:
             while self.processed_count < config.MAX_TOPICS:
-                
-                # Check Local Queue
                 if not self.topic_queue:
-                    # Priority 1: Pick pending listings (to find more topics)
                     pending_listings = self.db.get_pending_urls(url_type='listing', limit=20)
-                    # Priority 2: Pick pending topics
                     pending_topics = self.db.get_pending_urls(url_type='topic', limit=50)
                     
                     batch = pending_listings + pending_topics
                     if not batch:
-                        # Bootstrap if absolutely nothing is left
-                        print("#INFO: DB empty. Bootstrapping from homepage...")
+                        print("#INFO: DB empty. Bootstrapping...")
                         self.db.add_urls([config.BASE_URL], url_type='listing')
                         batch = self.db.get_pending_urls(limit=10)
                     
@@ -108,18 +101,13 @@ class NairalandCrawler:
                     self.topic_queue.extend(batch)
 
                 if not self.topic_queue:
-                    print("#NOTE: No URLs found. Sleeping...")
                     time.sleep(30)
                     continue
 
                 url, url_type = self.topic_queue.popleft()
-                
-                # Dedupe check
-                if self.db.is_url_visited(url):
-                    continue
+                if self.db.is_url_visited(url): continue
                 
                 print(f"\n#INFO: [{self.processed_count}/{config.MAX_TOPICS}] [{url_type.upper()}] {url}")
-                
                 success = self.process_url(page, url, url_type)
                 
                 if success:

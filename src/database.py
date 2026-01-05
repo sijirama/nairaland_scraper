@@ -46,6 +46,7 @@ class DatabaseManager:
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS posts (
                         post_id TEXT PRIMARY KEY,
+                        topic_id TEXT,
                         author TEXT,
                         post_time TEXT,
                         content TEXT,
@@ -59,8 +60,10 @@ class DatabaseManager:
                         last_visited TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
                 """)
-                try:
-                    cur.execute("ALTER TABLE visited_urls ADD COLUMN IF NOT EXISTS url_type TEXT DEFAULT 'topic'")
+                # Migration: Add topic_id if missing
+                try: cur.execute("ALTER TABLE posts ADD COLUMN IF NOT EXISTS topic_id TEXT")
+                except: pass
+                try: cur.execute("ALTER TABLE visited_urls ADD COLUMN IF NOT EXISTS url_type TEXT DEFAULT 'topic'")
                 except: pass
         except Exception as e:
             print(f"#WARN: Init DB failed: {e}")
@@ -88,11 +91,9 @@ class DatabaseManager:
                 return None
 
     def is_url_visited(self, url):
-        # Check if URL is already done OR currently being handled by someone else
         res = self._execute_with_retry("SELECT status FROM visited_urls WHERE url = %s", (url,), is_select=True)
         if not res: return False
-        status = res[0]
-        return status in ['completed', 'processing']
+        return res[0] in ['completed', 'processing']
 
     def mark_url_processing(self, url):
         self._execute_with_retry("""
@@ -129,9 +130,16 @@ class DatabaseManager:
         if not posts: return
         for p in posts:
             query = """
-                INSERT INTO posts (post_id, author, post_time, content, source_url)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO posts (post_id, topic_id, author, post_time, content, source_url)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 ON CONFLICT (post_id) DO NOTHING
             """
-            params = (str(p['post_id']), str(p['author']), str(p['time']), str(p['content']), str(p.get('source_url', '')))
+            params = (
+                str(p['post_id']), 
+                str(p.get('topic_id', '')),
+                str(p['author']), 
+                str(p['time']), 
+                str(p['content']), 
+                str(p.get('source_url', ''))
+            )
             self._execute_with_retry(query, params)
