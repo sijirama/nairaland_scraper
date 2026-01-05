@@ -1,5 +1,5 @@
 services:
-  scraper:
+  naira-scraper:
     build: .
     volumes:
       - ./data:/app/data
