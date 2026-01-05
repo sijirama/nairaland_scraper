@@ -2,13 +2,27 @@ from bs4 import BeautifulSoup
 from typing import List, Dict, Optional
 import datetime
 
-def parse_homepage_posts(html_content: str) -> List[Dict[str, str]]:
-    #INFO: Parses homepage to extract thread links
+def get_url_type(url: str) -> str:
+    #INFO: Determine if a URL is a discussion topic or a listing page
+    path = url.split('nairaland.com/')[-1].strip('/')
+    if not path: return 'listing' # Base URL is a listing
+    
+    parts = path.split('/')
+    if parts[0].isdigit():
+        return 'topic'
+    
+    # Check for known listing paths
+    if parts[0] in ['news', 'recent', 'politics', 'romance', 'jobs', 'investment', 'business']:
+        return 'listing'
+        
+    return 'listing' # Default to listing for discovery
+
+def extract_topic_links(html_content: str) -> List[str]:
+    #INFO: Extract topic links from any page
     soup = BeautifulSoup(html_content, 'html.parser')
     results = []
     links = soup.find_all('a')
-    seen_ids = set()
-
+    
     for link in links:
         href = link.get('href', '')
         text = link.get_text(strip=True)
@@ -20,24 +34,35 @@ def parse_homepage_posts(html_content: str) -> List[Dict[str, str]]:
                 path = '/' + href.split('nairaland.com/')[-1]
             else: continue
         
-        if path.startswith('/') and len(path) > 1:
-            parts = path.strip('/').split('/')
-            if parts and parts[0].isdigit():
-                topic_id = parts[0]
-                if topic_id in seen_ids: continue
-                seen_ids.add(topic_id)
-                if text.isdigit(): continue
+        path = path.strip('/')
+        if not path: continue
+        
+        parts = path.split('/')
+        if parts[0].isdigit():
+            # It's a topic
+            results.append(f"https://www.nairaland.com/{path}")
+            
+    return list(set(results))
 
-                results.append({
-                    "id": topic_id,
-                    "title": text,
-                    "url": f"https://www.nairaland.com{path}",
-                    "scraped_at": datetime.datetime.now().isoformat()
-                })
-    return results
+def extract_pagination_links(html_content: str) -> List[str]:
+    #INFO: Extract pagination links (could be topic pages or listing pages)
+    soup = BeautifulSoup(html_content, 'html.parser')
+    results = []
+    pgn_links = soup.find_all('a', class_='pgn')
+    
+    for link in pgn_links:
+        href = link.get('href', '')
+        if not href: continue
+        
+        if href.startswith('/'):
+            results.append(f"https://www.nairaland.com{href}")
+        elif href.startswith('https://www.nairaland.com'):
+            results.append(href)
+            
+    return list(set(results))
 
-def parse_topic_content(html_content: str) -> Dict:
-    #INFO: Parses topic pages to extract posts and pagination
+def parse_topic_content(html_content: str) -> List[Dict]:
+    #INFO: Parses topic pages to extract posts
     soup = BeautifulSoup(html_content, 'html.parser')
     post_tables = soup.find_all('table', summary='posts')
     posts = []
@@ -56,20 +81,12 @@ def parse_topic_content(html_content: str) -> Dict:
             if body_td.has_attr('id') and body_td['id'].startswith('pb'):
                 post_id = body_td['id'][2:]
 
-            posts.append({
-                "post_id": post_id,
-                "author": author,
-                "time": post_time,
-                "content": content
-            })
+            if post_id:
+                posts.append({
+                    "post_id": post_id,
+                    "author": author,
+                    "time": post_time,
+                    "content": content
+                })
 
-    next_pages = []
-    pgn_links = soup.find_all('a', class_='pgn')
-    for link in pgn_links:
-        href = link.get('href', '')
-        if href.startswith('/'):
-            full_url = f"https://www.nairaland.com{href}"
-            if full_url not in next_pages:
-                next_pages.append(full_url)
-
-    return {"posts": posts, "pagination": next_pages}
+    return posts
