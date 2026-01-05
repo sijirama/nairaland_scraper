@@ -3,7 +3,7 @@ from typing import List, Dict, Optional
 import datetime
 
 def parse_homepage_posts(html_content: str) -> List[Dict[str, str]]:
-    # //INFO: Parses homepage to extract thread links
+    #INFO: Parses homepage to extract thread links
     soup = BeautifulSoup(html_content, 'html.parser')
     results = []
     links = soup.find_all('a')
@@ -37,7 +37,7 @@ def parse_homepage_posts(html_content: str) -> List[Dict[str, str]]:
     return results
 
 def parse_topic_content(html_content: str) -> Dict:
-    # //INFO: Parses topic pages to extract posts and pagination
+    #INFO: Parses topic pages to extract posts and pagination
     soup = BeautifulSoup(html_content, 'html.parser')
     post_tables = soup.find_all('table', summary='posts')
     posts = []

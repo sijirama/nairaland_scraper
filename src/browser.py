@@ -21,7 +21,7 @@ class BrowserManager:
     def __enter__(self) -> Page:
         self.playwright = sync_playwright().start()
         
-        # //INFO: Launching persistent context to maintain challenge state
+        #INFO: Launching persistent context to maintain challenge state
         self.context = self.playwright.chromium.launch_persistent_context(
             user_data_dir=self.user_data_dir,
             headless=self.headless,
@@ -49,7 +49,7 @@ class BrowserManager:
 
 
 def wait_for_cloudflare(page: Page, max_wait: int = 180):
-    # //INFO: Handles Turnstile challenges via human simulation
+    #INFO: Handles Turnstile challenges via human simulation
     start_time = time.time()
     check_count = 0
     
@@ -71,7 +71,7 @@ def wait_for_cloudflare(page: Page, max_wait: int = 180):
             title = ""
         
         if "Nairaland" in title and "Just a moment" not in title:
-            print(f"    # //INFO: Challenge passed in {int(time.time() - start_time)}s")
+            print(f"    #INFO: Challenge passed in {int(time.time() - start_time)}s")
             return True
         
         content = ""
@@ -85,7 +85,7 @@ def wait_for_cloudflare(page: Page, max_wait: int = 180):
         
         if is_cf:
             if check_count % 3 == 1:
-                print(f"    # //INFO: Still waiting for Cloudflare... ({check_count})")
+                print(f"    #INFO: Still waiting for Cloudflare... ({check_count})")
             
             if check_count % 6 == 1:
                 try:
@@ -117,7 +117,7 @@ def wait_for_cloudflare(page: Page, max_wait: int = 180):
                             page.mouse.move(tx, ty, steps=15)
                             time.sleep(0.3)
                             page.mouse.click(tx, ty)
-                            print(f"    # //INFO: Interacted with Turnstile widget")
+                            print(f"    #INFO: Interacted with Turnstile widget")
                 else:
                     if check_count > 6 and check_count % 5 == 0:
                         v = page.viewport_size or {"width": 1280, "height": 720}
@@ -128,10 +128,10 @@ def wait_for_cloudflare(page: Page, max_wait: int = 180):
             time.sleep(random.uniform(5, 8))
         else:
             if check_count > 5:
-                print(f"    # //INFO: Page state unclear ('{title}'). Waiting...")
+                print(f"    #INFO: Page state unclear ('{title}'). Waiting...")
             time.sleep(4)
     
-    print(f"    # //WARN: Challenge timeout reached")
+    print(f"    #WARN: Challenge timeout reached")
     return False
 
 
@@ -140,7 +140,7 @@ def human_delay():
 
 
 def safe_goto(page: Page, url: str, timeout: int = 60000, is_first_request: bool = False):
-    print(f"    # //INFO: Navigating to {url}")
+    print(f"    #INFO: Navigating to {url}")
     
     if not is_first_request:
         human_delay()
@@ -149,7 +149,7 @@ def safe_goto(page: Page, url: str, timeout: int = 60000, is_first_request: bool
         page.goto(url, wait_until="commit", timeout=timeout)
         time.sleep(2)
     except Exception as e:
-        print(f"    # //WARN: Navigation issue: {str(e)[:50]}")
+        print(f"    #WARN: Navigation issue: {str(e)[:50]}")
     
     title = page.title()
     if "Just a moment" in title or "Checking your browser" in title:

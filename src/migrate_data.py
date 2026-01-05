@@ -13,22 +13,22 @@ def sanitize(text):
     return text.replace('\u0000', '').replace('\x00', '')
 
 def run_migration():
-    print("# //INFO: Starting migration script...")
+    print("#INFO: Starting migration script...")
     legacy_file = config.OUTPUT_DIR / "scraped_posts.jsonl"
     
     if not legacy_file.exists():
-        print(f"# //NOTE: No legacy file found at {legacy_file}")
+        print(f"#NOTE: No legacy file found at {legacy_file}")
         return
 
     try:
         db = DatabaseManager(config.DATABASE_URL)
-        print(f"# //INFO: Database connection established.")
+        print(f"#INFO: Database connection established.")
     except Exception as e:
-        print(f"# //WARN: Database connection failed: {e}")
+        print(f"#WARN: Database connection failed: {e}")
         return
     
     total_count = 0
-    print(f"# //INFO: Migrating in batches of 50 with sanitization...")
+    print(f"#INFO: Migrating in batches of 50 with sanitization...")
     
     batch = []
     try:
@@ -52,21 +52,21 @@ def run_migration():
                     if len(batch) >= 50:
                         db.save_posts(batch)
                         total_count += len(batch)
-                        print(f"  # //INFO: Migrated {total_count} posts...")
+                        print(f"  #INFO: Migrated {total_count} posts...")
                         batch = []
                         time.sleep(0.5)
                 except Exception as e:
-                    print(f"  # //NOTE: Skipped line: {e}")
+                    print(f"  #NOTE: Skipped line: {e}")
                     continue
         
         if batch:
             db.save_posts(batch)
             total_count += len(batch)
             
-        print(f"# //INFO: Migration complete. Total posts moved: {total_count}")
+        print(f"#INFO: Migration complete. Total posts moved: {total_count}")
         
     except Exception as e:
-        print(f"# //WARN: Migration interrupted: {e}")
+        print(f"#WARN: Migration interrupted: {e}")
 
 if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
