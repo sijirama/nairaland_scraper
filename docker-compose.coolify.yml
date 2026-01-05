@@ -1,0 +1,12 @@
+# //INFO: Specialized compose for Coolify production
+# //NOTE: Scaling (replicas) should be managed via Coolify dashboard
+services:
+  naira-scraper:
+    build: .
+    volumes:
+      - nairaland_data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+
+volumes:
+  nairaland_data:
