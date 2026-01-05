@@ -29,8 +29,9 @@ class DatabaseManager:
                 with self.conn.cursor() as cur:
                     cur.execute("SELECT 1")
                 return self.conn
-            except:
+            except Exception as e:
                 attempts += 1
+                print(f"    #NOTE: DB Connection attempt {attempts} failed: {e}")
                 if self.conn:
                     try: self.conn.close()
                     except: pass
