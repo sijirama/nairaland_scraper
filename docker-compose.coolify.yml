@@ -23,6 +23,9 @@ services:
   naira-scraper-5:
     <<: *scraper_node
 
+  naira-scraper-6:
+    <<: *scraper_node
+
 volumes:
   nairaland_data:
 
